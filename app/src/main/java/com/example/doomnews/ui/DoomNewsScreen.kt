@@ -8,11 +8,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,6 +31,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,14 +49,30 @@ import com.example.doomnews.R
 import com.example.doomnews.data.DataSource
 import com.example.doomnews.model.NewsArticle
 import com.example.doomnews.ui.theme.DoomNewsTheme
+import com.example.doomnews.ui.utils.DoomNewsContentType
 
 @Composable
-fun DoomNewsApp() {
+fun DoomNewsApp(windowSize: WindowWidthSizeClass) {
     val viewModel: DoomNewsViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
+    val contentType: DoomNewsContentType
+    when(windowSize) {
+        WindowWidthSizeClass.Compact -> {
+            contentType = DoomNewsContentType.LIST_ONLY
+        }
+        WindowWidthSizeClass.Medium -> {
+            contentType = DoomNewsContentType.LIST_ONLY
+        }
+        WindowWidthSizeClass.Expanded -> {
+            contentType = DoomNewsContentType.LIST_AND_DETAIL
+        }
+        else -> {
+            contentType = DoomNewsContentType.LIST_ONLY
+        }
 
-    // TODO: Add contentType and when conditional to determine windowSize
 
+
+}
     Scaffold(
         topBar = {
             DoomNewsAppBar(
@@ -61,218 +81,310 @@ fun DoomNewsApp() {
             )
         }
     ) { innerPadding ->
-        // TODO: Add simple navigation with if/else conditional to show details
-        // TODO: Add navigation to go to Feed page and List and Details page
-
-        DoomNewsList(
-            articles = uiState.articlesList,
-            onClick = {
-                      /* TODO: Call ViewModel to updateCurrentArticle and navigateToDetailPage */
-            },
-            contentPadding = innerPadding,
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DoomNewsAppBar(
-    onBackButtonClick: () -> Unit,
-    isShowingListPage: Boolean,
-    modifier: Modifier = Modifier
-) {
-    TopAppBar(
-        title = {
-            Text(
-                text = if (!isShowingListPage) {
-                    stringResource(R.string.app_name) + " - Article"
-                } else {
-                    stringResource(R.string.app_name)
-                }
+        if (contentType == DoomNewsContentType.LIST_AND_DETAIL) {
+            DoomNewsListAndDetails(
+                articles = uiState.articlesList,
+                onClick = {
+                    viewModel.updateCurrentArticle(it)
+                },
+                selectedArticle = uiState.currentArticle,
+                contentPadding = innerPadding,
+                modifier = Modifier.fillMaxWidth()
             )
-        },
-        navigationIcon = if (!isShowingListPage) {
-            {
-                IconButton(onClick = onBackButtonClick) {
-                    Icon(
-                        imageVector = Icons.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.back_button)
-                    )
-                }
-            }
         } else {
-            { Box {} }
-        },
-        //colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary),
-        modifier = modifier,
-    )
-}
-
-@Composable
-fun DoomNewsList(
-    articles: List<NewsArticle>,
-    onClick: (NewsArticle) -> Unit,
-    modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(0.dp),
-) {
-    LazyColumn(
-        contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier,
-    ) {
-        items(articles) { article ->
-            DoomNewsListItem(
-                newsArticle = article,
-                onItemClick = onClick,
-                //modifier = Modifier.padding(8.dp)
-            )
+            if (uiState.isShowingListPage) {
+                DoomNewsList(
+                    articles = uiState.articlesList,
+                    onClick = {
+                        viewModel.updateCurrentArticle(it)
+                        viewModel.navigateToDetailPage()
+                    },
+                    contentPadding = innerPadding,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            top = dimensionResource(R.dimen.padding_medium),
+                            start = dimensionResource(R.dimen.padding_medium),
+                            end = dimensionResource(R.dimen.padding_medium),
+                        )
+                )
+            } else {
+                DoomNewsDetail(
+                    selectedArticle = uiState.currentArticle,
+                    contentPadding = innerPadding,
+                    onBackPressed = {
+                        viewModel.navigateToListPage()
+                    }
+                )
+            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DoomNewsListItem(
-    newsArticle: NewsArticle,
-    onItemClick: (NewsArticle) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    // Card, Column, Image, Text, Text
-    Card(
-        modifier = modifier,
-        onClick = { onItemClick(newsArticle) }
-    ) {
-        Column(
 
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun DoomNewsAppBar(
+        onBackButtonClick: () -> Unit,
+        isShowingListPage: Boolean,
+        modifier: Modifier = Modifier
+    ) {
+        TopAppBar(
+            title = {
+                Text(
+                    text = if (!isShowingListPage) {
+                        stringResource(R.string.app_name) + " - Article"
+                    } else {
+                        stringResource(R.string.app_name)
+                    }
+                )
+            },
+            navigationIcon = if (!isShowingListPage) {
+                {
+                    IconButton(onClick = onBackButtonClick) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back_button)
+                        )
+                    }
+                }
+            } else {
+                { Box {} }
+            },
+            //colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary),
+            modifier = modifier,
+        )
+    }
+
+    @Composable
+    fun DoomNewsList(
+        articles: List<NewsArticle>,
+        onClick: (NewsArticle) -> Unit,
+        modifier: Modifier = Modifier,
+        contentPadding: PaddingValues = PaddingValues(0.dp),
+    ) {
+        LazyColumn(
+            contentPadding = contentPadding,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = modifier,
         ) {
-            DoomNewsImage(imageResourceId = newsArticle.imageResourceId)
+            items(articles) { article ->
+                DoomNewsListItem(
+                    newsArticle = article,
+                    onItemClick = onClick,
+                    //modifier = Modifier.padding(8.dp)
+                )
+            }
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun DoomNewsListItem(
+        newsArticle: NewsArticle,
+        onItemClick: (NewsArticle) -> Unit,
+        modifier: Modifier = Modifier
+    ) {
+        // Card, Column, Image, Text, Text
+        Card(
+            modifier = modifier,
+            onClick = { onItemClick(newsArticle) }
+        ) {
+            Column(
+
+            ) {
+                DoomNewsImage(imageResourceId = newsArticle.imageResourceId)
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = stringResource(newsArticle.headlineResourceId),
+                    style = MaterialTheme.typography.titleLarge,
+                    minLines = 3,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(
+                        start = 8.dp,
+                        end = 8.dp,
+                        bottom = 8.dp
+                    )
+                )
+                Text(
+                    text = stringResource(
+                        id = R.string.author_line,
+                        stringResource(newsArticle.authorResourceId), newsArticle.lastUpdateTime
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(
+                        start = 8.dp,
+                        end = 8.dp,
+                        bottom = 8.dp
+                    )
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun DoomNewsDetail(
+        selectedArticle: NewsArticle,
+        onBackPressed: () -> Unit,
+        modifier: Modifier = Modifier,
+        contentPadding: PaddingValues = PaddingValues(0.dp),
+        @DimenRes imageSize: Int = R.dimen.image_size_small
+    ) {
+
+        BackHandler {
+            onBackPressed()
+        }
+        Column(
+            modifier = modifier
+                .verticalScroll(state = rememberScrollState())
+                .padding(contentPadding)
+        ) {
+            DoomNewsImage(imageResourceId = selectedArticle.imageResourceId, imageSize)
             Spacer(Modifier.height(16.dp))
             Text(
-                text = stringResource(newsArticle.headlineResourceId),
-                style = MaterialTheme.typography.titleLarge,
-                minLines = 3,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(
-                    start = 8.dp,
-                    end = 8.dp,
-                    bottom = 8.dp
-                )
+                text = stringResource(id = selectedArticle.headlineResourceId),
+                style = MaterialTheme.typography.headlineLarge,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
+            Spacer(Modifier.height(8.dp))
             Text(
-                text = stringResource(id = R.string.author_line,
-                    stringResource(newsArticle.authorResourceId), newsArticle.lastUpdateTime),
+                text = stringResource(
+                    id = R.string.author_line,
+                    stringResource(selectedArticle.authorResourceId), selectedArticle.lastUpdateTime
+                ),
                 style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            Divider(thickness = 1.dp, modifier = Modifier.padding(8.dp))
+            Text(
+                text = stringResource(id = selectedArticle.articleResourceId),
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(
-                    start = 8.dp,
-                    end = 8.dp,
-                    bottom = 8.dp
+                    vertical = 24.dp,
+                    horizontal = 40.dp
                 )
             )
         }
     }
-}
 
 @Composable
-private fun DoomNewsDetail(
-    selectedArticle: NewsArticle,
-    onBackPressed: () -> Unit,
-    modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(0.dp),
-    @DimenRes imageSize: Int = R.dimen.image_size_small
+fun DoomNewsFeed(
+    articles: List<NewsArticle>,
+    onClick: (NewsArticle) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    /* TODO: Add Back Handler */
 
-    Column(
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = modifier
-            .verticalScroll(state = rememberScrollState())
-            .padding(contentPadding)
     ) {
-        DoomNewsImage(imageResourceId = selectedArticle.imageResourceId, imageSize)
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = stringResource(id = selectedArticle.headlineResourceId),
-            style = MaterialTheme.typography.headlineLarge,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = stringResource(
-                id = R.string.author_line,
-                stringResource(selectedArticle.authorResourceId), selectedArticle.lastUpdateTime
-            ),
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(horizontal = 16.dp)
-        )
-        Divider(thickness = 1.dp, modifier = Modifier.padding(8.dp))
-        Text(
-            text = stringResource(id = selectedArticle.articleResourceId),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(
-                vertical = 24.dp,
-                horizontal = 40.dp
-            )
-        )
+
+
+        }
     }
-}
 
-// TODO: Add DoomNewsFeed() composable
-
-// TODO: Add DoomNewsListAndDetails() composable
-
-@Composable
-private fun DoomNewsImage(
-    @DrawableRes imageResourceId: Int,
-    @DimenRes imageSize: Int = R.dimen.image_size_small
-) {
-    Image(
-        painter = painterResource(imageResourceId),
-        contentDescription = null,
-        modifier = Modifier
-            .height(dimensionResource(imageSize))
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium),
-        contentScale = ContentScale.Crop
-    )
-}
-
-@Preview
-@Composable
-fun DoomNewsListPreview() {
-    DoomNewsTheme {
-        Surface {
+    @Composable
+    fun DoomNewsListAndDetails(
+        articles: List<NewsArticle>,
+        onClick: (NewsArticle) -> Unit,
+        selectedArticle: NewsArticle,
+        contentPadding: PaddingValues,
+        modifier: Modifier = Modifier
+    ) {
+        Row(modifier = modifier) {
             DoomNewsList(
-                articles = DataSource.articles,
-                onClick = { }
+                articles = articles,
+                onClick = onClick,
+                contentPadding = contentPadding,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(
+                        top = dimensionResource(R.dimen.padding_medium),
+                        start = dimensionResource(R.dimen.padding_medium),
+                        end = dimensionResource(R.dimen.padding_medium)
+                    )
             )
-        }
-    }
-}
-
-@Preview
-@Composable
-fun DoomNewsListItemPreview() {
-    DoomNewsTheme {
-        Surface {
-            DoomNewsListItem(
-                newsArticle = DataSource.articles[0],
-                onItemClick = { }
-            )
-        }
-    }
-}
-
-@Preview
-@Composable
-fun DoomNewsDetailPreview() {
-    DoomNewsTheme {
-        Surface {
             DoomNewsDetail(
-                selectedArticle = DataSource.articles[0],
-                onBackPressed = { }
+                selectedArticle = selectedArticle,
+                onBackPressed = { },
+                contentPadding = contentPadding,
+                modifier = Modifier.weight(2f)
+            )
+        }
+    }
+
+
+    @Composable
+    fun DoomNewsImage(
+        @DrawableRes imageResourceId: Int,
+        @DimenRes imageSize: Int = R.dimen.image_size_small
+    ) {
+        Image(
+            painter = painterResource(imageResourceId),
+            contentDescription = null,
+            modifier = Modifier
+                .height(dimensionResource(imageSize))
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.medium),
+            contentScale = ContentScale.Crop
+        )
+    }
+
+    @Preview
+    @Composable
+    fun DoomNewsListPreview() {
+        DoomNewsTheme {
+            Surface {
+                DoomNewsList(
+                    articles = DataSource.articles,
+                    onClick = { }
+                )
+            }
+        }
+    }
+
+    @Preview
+    @Composable
+    fun DoomNewsListItemPreview() {
+        DoomNewsTheme {
+            Surface {
+                DoomNewsListItem(
+                    newsArticle = DataSource.articles[0],
+                    onItemClick = { }
+                )
+            }
+        }
+    }
+
+    @Preview
+    @Composable
+    fun DoomNewsDetailPreview() {
+        DoomNewsTheme {
+            Surface {
+                DoomNewsDetail(
+                    selectedArticle = DataSource.articles[0],
+                    onBackPressed = { }
+                )
+            }
+        }
+    }
+
+    // TODO: Add DoomNewsListAndDetailPreview() Preview Composable
+
+@Preview
+@Composable
+fun DoomNewsListAndDetailPreview() {
+    DoomNewsTheme {
+        Surface {
+            DoomNewsListAndDetails(
+                articles = DataSource.articles,
+                onClick = { },
+                selectedArticle = DataSource.articles.first(),
+                contentPadding = PaddingValues(16.dp)
             )
         }
     }
 }
-
-// TODO: Add DoomNewsListAndDetailPreview() Preview Composable
